@@ -1,0 +1,17 @@
+{
+  "name": "sau-presence-guard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Integration-ready anti-fraud attendance module for SAU APP",
+  "workspaces": ["backend"],
+  "scripts": {
+    "dev": "npm --workspace backend run dev",
+    "build": "npm --workspace backend run build",
+    "start": "npm --workspace backend run start",
+    "test": "npm --workspace backend run test",
+    "typecheck": "npm --workspace backend run typecheck",
+    "check": "npm run typecheck && npm test && npm run build"
+  },
+  "engines": { "node": "22.x" }
+}

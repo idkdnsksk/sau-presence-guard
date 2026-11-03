@@ -114,4 +114,3 @@ Plugin сам регистрирует `SauPresenceGuardPlugin` на Android/iOS
 4. Приложить полученный `submission/sau-presence-guard-submission.zip` к решению Astana Hub.
 
 Полное соответствие каждому пункту официального PDF — в [docs/TZ_COMPLIANCE.md](docs/TZ_COMPLIANCE.md).
-

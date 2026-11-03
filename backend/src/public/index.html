@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="SAU Presence Guard — защищённая отметка посещаемости">
+  <title>SAU Presence Guard</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Главная навигация">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><span>S</span></div>
+        <div><strong>SAU</strong><small>Presence Guard</small></div>
+      </div>
+      <nav class="nav-list">
+        <button class="nav-item active" data-view="overview"><svg class="nav-icon" aria-hidden="true"><use href="/icons.svg#home"></use></svg><span>Обзор</span></button>
+        <button class="nav-item" data-view="host"><svg class="nav-icon" aria-hidden="true"><use href="/icons.svg#qr"></use></svg><span>QR ведущего</span></button>
+        <button class="nav-item" data-view="participant"><svg class="nav-icon" aria-hidden="true"><use href="/icons.svg#scan"></use></svg><span>Отметиться</span></button>
+        <button class="nav-item" data-view="review"><svg class="nav-icon" aria-hidden="true"><use href="/icons.svg#review"></use></svg><span>Проверка</span><b id="queue-badge" class="nav-badge hidden">0</b></button>
+        <button class="nav-item" data-view="settings"><svg class="nav-icon" aria-hidden="true"><use href="/icons.svg#settings"></use></svg><span>Правила</span></button>
+        <button class="nav-item" data-view="audit"><svg class="nav-icon" aria-hidden="true"><use href="/icons.svg#audit"></use></svg><span>Журнал</span></button>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="secure-chip"><span class="pulse-dot"></span>Проверки включены</div>
+        <p>Решение вычисляется на сервере</p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button id="menu-toggle" class="icon-button menu-button" aria-label="Открыть меню"><svg class="ui-icon"><use href="/icons.svg#menu"></use></svg></button>
+        <div class="breadcrumbs"><span>SAU SuperApp</span><b>/</b><strong id="page-name">Центр контроля</strong></div>
+        <div class="top-actions">
+          <div class="demo-label"><span></span>Демо-стенд</div>
+          <button class="icon-button" aria-label="Уведомления"><svg class="ui-icon"><use href="/icons.svg#bell"></use></svg></button>
+          <div class="profile"><div class="avatar">А</div><div><strong>Администратор</strong><small>Проверка отметок</small></div></div>
+        </div>
+      </header>
+
+      <section id="view-overview" class="view active">
+        <div class="hero-row">
+          <div>
+            <p class="eyebrow">Контроль посещаемости</p>
+            <h1>Защищённая отметка<br>посещаемости</h1>
+            <p class="lead">Сканирование запускает на сервере проверку QR, расписания, геопозиции и устройства.</p>
+          </div>
+          <div class="hero-orbit" aria-hidden="true">
+            <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+            <div class="shield"><svg class="hero-shield-icon" aria-hidden="true"><use href="/icons.svg#shield"></use></svg></div>
+            <span class="signal s1">QR</span><span class="signal s2">GPS</span><span class="signal s3">Устройство</span>
+          </div>
+        </div>
+
+        <div class="metric-grid">
+          <article class="metric-card"><div class="metric-head"><span>Принято</span><i class="status-dot accepted"></i></div><strong id="metric-accepted">0</strong><small>достоверных отметок</small></article>
+          <article class="metric-card"><div class="metric-head"><span>На проверке</span><i class="status-dot suspicious"></i></div><strong id="metric-suspicious">0</strong><small>требуют решения</small></article>
+          <article class="metric-card"><div class="metric-head"><span>Отклонено</span><i class="status-dot rejected"></i></div><strong id="metric-rejected">0</strong><small>попыток остановлено</small></article>
+          <article class="metric-card accent"><div class="metric-head"><span>Серверные проверки</span><i class="mini-shield"><svg class="ui-icon"><use href="/icons.svg#shield"></use></svg></i></div><strong>5 этапов</strong><small>QR · расписание · гео · устройство · история</small></article>
+        </div>
+
+        <div class="dashboard-grid">
+          <article class="panel activity-panel">
+            <div class="panel-head"><div><p class="eyebrow">Сегодня</p><h2>Последние отметки</h2></div><button class="text-button" data-go="audit">Открыть журнал</button></div>
+            <div id="recent-list" class="recent-list"><div class="empty-inline">Проведите первую отметку в демо</div></div>
+          </article>
+          <article class="panel protection-panel">
+            <div class="panel-head"><div><p class="eyebrow">Состояние</p><h2>Проверки включены</h2></div><span class="live-label"><i></i>Онлайн</span></div>
+            <div class="protection-ring"><div><strong>100%</strong><span>проверок<br>на сервере</span></div></div>
+            <ul class="check-list"><li><span><svg class="ui-icon"><use href="/icons.svg#check"></use></svg></span>Подпись и TTL QR</li><li><span><svg class="ui-icon"><use href="/icons.svg#check"></use></svg></span>Место + позиция ведущего</li><li><span><svg class="ui-icon"><use href="/icons.svg#check"></use></svg></span>Play Integrity / App Attest</li></ul>
+          </article>
+        </div>
+      </section>
+
+      <section id="view-host" class="view">
+        <div class="section-heading"><div><p class="eyebrow">Экран ведущего</p><h1>Динамический QR занятия</h1><p>Сервер выдаёт новый код по настроенному интервалу и сохраняет позицию ведущего.</p></div><span class="role-pill">Ведущий · демо</span></div>
+        <div class="host-layout">
+          <article class="phone-frame host-phone">
+            <div class="phone-status"><span>09:41</span><span>LTE · 100%</span></div>
+            <div class="phone-appbar"><button aria-label="Назад"><svg class="ui-icon"><use href="/icons.svg#arrow-left"></use></svg></button><strong>Отметка посещаемости</strong><span></span></div>
+            <div class="phone-content">
+              <span class="live-session"><i></i>Занятие идёт</span>
+              <h3>Групповое занятие №24</h3><p>По расписанию</p>
+              <div id="qr-box" class="qr-box"><div class="qr-placeholder"><svg class="placeholder-icon" aria-hidden="true"><use href="/icons.svg#qr"></use></svg><small>Получаем код с сервера…</small></div></div>
+              <div class="countdown"><div class="countdown-track"><i id="countdown-bar"></i></div><p>Обновление через <strong id="countdown-value">—</strong></p></div>
+              <div class="location-ok"><svg class="location-icon" aria-hidden="true"><use href="/icons.svg#location"></use></svg><div><strong>Место проведения №1</strong><small>Позиция ведущего получена</small></div><b><svg class="ui-icon"><use href="/icons.svg#check"></use></svg></b></div>
+            </div>
+          </article>
+          <div class="host-details">
+            <article class="panel session-card">
+              <div class="panel-head"><div><p class="eyebrow">Текущее занятие</p><h2>Групповое занятие №24</h2></div><span class="status-badge accepted">Идёт сейчас</span></div>
+              <div class="detail-grid"><div><span>Место проведения</span><strong>Место №1</strong></div><div><span>Роль</span><strong>Ведущий</strong></div><div><span>Допустимый радиус</span><strong>120 м</strong></div><div><span>Окно отметки</span><strong>−15 / +20 мин</strong></div></div>
+            </article>
+            <article class="panel explainer-card"><p class="eyebrow">Что защищает код</p><div class="step-row"><b>01</b><div><strong>Подписан на сервере</strong><p>Занятие, ведущий, время выдачи и случайный ID защищены HMAC.</p></div></div><div class="step-row"><b>02</b><div><strong>Живёт 15 секунд</strong><p>Старый скриншот отклоняется, а новый код появляется без действий ведущего.</p></div></div><div class="step-row"><b>03</b><div><strong>Привязан к месту</strong><p>Сервер сохраняет свежую позицию ведущего для двойной геопроверки.</p></div></div></article>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-participant" class="view">
+        <div class="section-heading"><div><p class="eyebrow">Режим участника</p><h1>Отметка участника</h1><p>Скан QR запускает геолокацию в момент отметки, проверку устройства и серверное решение.</p></div><span class="role-pill participant-role">Участник · демо</span></div>
+        <div class="participant-layout">
+          <article class="phone-frame participant-phone">
+            <div class="phone-status inverse"><span>09:41</span><span>LTE · 100%</span></div>
+            <div id="scan-screen" class="scanner-screen">
+              <div class="scanner-head"><button aria-label="Закрыть"><svg class="ui-icon"><use href="/icons.svg#close"></use></svg></button><div><strong>Сканируйте QR</strong><small>Наведите камеру на экран ведущего</small></div><span></span></div>
+              <div class="camera-view"><div class="scan-corner tl"></div><div class="scan-corner tr"></div><div class="scan-corner bl"></div><div class="scan-corner br"></div><i class="scan-line"></i><div class="camera-copy"><svg class="camera-icon" aria-hidden="true"><use href="/icons.svg#qr"></use></svg><small>В демонстрации камера заменена<br>выбором тестового сценария</small></div></div>
+              <button id="scan-button" class="primary-button scan-button">Сканировать текущий QR</button>
+            </div>
+            <div id="result-screen" class="result-screen hidden">
+              <div id="result-icon" class="result-icon"><svg class="result-svg" aria-hidden="true"><use href="/icons.svg#check"></use></svg></div><p class="eyebrow">Решение сервера</p><h3 id="result-title">Отметка принята</h3><p id="result-copy">Отметка сохранена.</p><div id="result-reasons" class="result-reasons"></div><button id="scan-again" class="secondary-button">Проверить другой сценарий</button>
+            </div>
+          </article>
+          <div class="scenario-panel">
+            <p class="eyebrow">Приёмочные сценарии</p><h2>Сценарии серверного решения</h2><p class="muted">Выберите входные сигналы: сервер вернёт статус, причины и оценку риска.</p>
+            <div class="scenario-list" role="radiogroup" aria-label="Сценарий проверки">
+              <label class="scenario active"><input type="radio" name="scenario" value="honest" checked><span class="scenario-icon good"><svg class="ui-icon"><use href="/icons.svg#check"></use></svg></span><div><strong>Все проверки пройдены</strong><small>Точная геолокация, надёжное устройство</small></div><b>accepted</b></label>
+              <label class="scenario"><input type="radio" name="scenario" value="accuracy"><span class="scenario-icon warn"><svg class="ui-icon"><use href="/icons.svg#accuracy"></use></svg></span><div><strong>Слабый GPS в помещении</strong><small>Точность 140 м — без автоматического отказа</small></div><b>suspicious</b></label>
+              <label class="scenario"><input type="radio" name="scenario" value="mock"><span class="scenario-icon bad"><svg class="ui-icon"><use href="/icons.svg#location"></use></svg></span><div><strong>Подмена геолокации</strong><small>ОС сообщила признак mock location</small></div><b>rejected</b></label>
+              <label class="scenario"><input type="radio" name="scenario" value="far"><span class="scenario-icon bad"><svg class="ui-icon"><use href="/icons.svg#route"></use></svg></span><div><strong>Вне места проведения</strong><small>Далеко от заданной точки и ведущего</small></div><b>rejected</b></label>
+              <label class="scenario"><input type="radio" name="scenario" value="emulator"><span class="scenario-icon bad"><svg class="ui-icon"><use href="/icons.svg#device"></use></svg></span><div><strong>Эмулятор</strong><small>Запрос выполнен не с физического устройства</small></div><b>rejected</b></label>
+              <label class="scenario"><input type="radio" name="scenario" value="root"><span class="scenario-icon warn"><svg class="ui-icon"><use href="/icons.svg#warning"></use></svg></span><div><strong>Root / jailbreak</strong><small>Отметка сохраняется для ручной проверки</small></div><b>suspicious</b></label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-review" class="view">
+        <div class="section-heading"><div><p class="eyebrow">Подозрительные отметки</p><h1>Ручная проверка</h1><p>Ведущий или администратор видит причины и фиксирует решение с комментарием.</p></div><button id="refresh-queue" class="secondary-button compact"><svg class="button-icon"><use href="/icons.svg#refresh"></use></svg>Обновить</button></div>
+        <div id="review-queue" class="review-queue"><div class="empty-state"><div><svg class="empty-icon"><use href="/icons.svg#check"></use></svg></div><h3>Подозрительных отметок нет</h3><p>Для проверки интерфейса выберите сценарий со слабым GPS или root.</p></div></div>
+      </section>
+
+      <section id="view-settings" class="view">
+        <div class="section-heading"><div><p class="eyebrow">Место проведения</p><h1>Параметры проверки</h1><p>Интервал QR, радиусы и окно отметки задаются отдельно для каждого места.</p></div><span class="role-pill">Администратор</span></div>
+        <form id="venue-form" class="settings-layout">
+          <article class="panel form-panel">
+            <div class="panel-head"><div><p class="eyebrow">Место №1</p><h2>Правила отметки</h2></div><span id="settings-state" class="save-state">Сохранено</span></div>
+            <div class="form-grid">
+              <label class="field full"><span>Название места проведения</span><input name="name" required></label>
+              <label class="field full"><span>Адрес</span><input name="address" required></label>
+              <label class="field"><span>Допустимый радиус, м</span><input name="radiusM" type="number" min="20" max="5000" required></label>
+              <label class="field"><span>Радиус до ведущего, м</span><input name="hostRadiusM" type="number" min="20" max="5000" required></label>
+              <label class="field"><span>Обновление QR, сек</span><input name="qrIntervalS" type="number" min="3" max="60" required></label>
+              <label class="field"><span>Срок QR, сек</span><input name="qrTtlS" type="number" min="5" max="120" required></label>
+              <label class="field"><span>До занятия, мин</span><input name="checkinBeforeMin" type="number" min="0" max="180" required></label>
+              <label class="field"><span>После занятия, мин</span><input name="checkinAfterMin" type="number" min="0" max="180" required></label>
+              <label class="field"><span>Порог точности GPS, м</span><input name="gpsAccuracyWarnM" type="number" min="10" max="1000" required></label>
+              <label class="field"><span>Часовой пояс</span><input name="timezone" required></label>
+              <input name="latitude" type="hidden"><input name="longitude" type="hidden">
+            </div>
+            <button class="primary-button" type="submit">Сохранить правила</button>
+          </article>
+          <article class="map-panel">
+            <div class="fake-map"><div class="roads r1"></div><div class="roads r2"></div><div class="roads r3"></div><div class="geo-radius"><span><b>Место проведения №1</b><small id="map-radius">120 м</small></span></div><div class="map-pin"><svg class="map-pin-icon"><use href="/icons.svg#location"></use></svg></div><div class="map-label l1">пр. Абая</div><div class="map-label l2">ул. Байтурсынова</div><div class="map-controls"><button type="button" aria-label="Приблизить"><svg class="ui-icon"><use href="/icons.svg#plus"></use></svg></button><button type="button" aria-label="Отдалить"><svg class="ui-icon"><use href="/icons.svg#minus"></use></svg></button></div></div>
+            <div class="map-footer"><div><span>Координаты</span><strong id="map-coordinates">43.238293, 76.945465</strong></div><div class="osm-label">Схема геозоны · без внешней карты</div></div>
+          </article>
+        </form>
+      </section>
+
+      <section id="view-audit" class="view">
+        <div class="section-heading"><div><p class="eyebrow">История изменений</p><h1>Журнал безопасности</h1><p>Выдача QR, результаты серверных проверок и ручные решения.</p></div><a class="secondary-button compact" href="/openapi.json" target="_blank" rel="noreferrer">OpenAPI <svg class="button-icon"><use href="/icons.svg#external"></use></svg></a></div>
+        <article class="panel audit-panel"><div class="audit-header"><span>Время</span><span>Событие</span><span>Объект</span><span>Исполнитель</span></div><div id="audit-list" class="audit-list"><div class="empty-inline">Журнал загружается…</div></div></article>
+      </section>
+    </main>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+node_modules
+backend/dist
+backend/data
+.git
+.env
+coverage
+submission
+mobile/example/build

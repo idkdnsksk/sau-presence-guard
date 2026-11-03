@@ -1,0 +1,17 @@
+.git
+.env
+.vercel
+node_modules
+backend/data
+backend/**/data
+backend/dist
+backend/test
+coverage
+docs
+mobile
+scripts
+submission
+Dockerfile
+compose.yaml
+compose.demo.yaml
+*.zip

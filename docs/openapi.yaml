@@ -1,0 +1,479 @@
+openapi: 3.1.0
+info:
+  title: SAU Presence Guard API
+  version: 1.0.0
+  description: Контракт встраиваемого модуля защищённой отметки посещаемости.
+servers:
+  - url: https://api.example.kz
+security:
+  - bearerAuth: []
+tags:
+  - name: Bootstrap
+  - name: Host
+  - name: Attendance
+  - name: Review
+  - name: Admin
+paths:
+  /api/v1/health:
+    get:
+      security: []
+      summary: Liveness endpoint
+      responses:
+        "200":
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, serverTime]
+                properties:
+                  status: { const: ok }
+                  serverTime: { type: string, format: date-time }
+  /api/v1/bootstrap:
+    get:
+      tags: [Bootstrap]
+      summary: Текущий пользователь и доступные занятия
+      responses:
+        "200":
+          description: Role-filtered bootstrap
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user, sessions, serverTime]
+                properties:
+                  user: { $ref: "#/components/schemas/Actor" }
+                  sessions:
+                    type: array
+                    items: { $ref: "#/components/schemas/Session" }
+                  serverTime: { type: string, format: date-time }
+        "401": { $ref: "#/components/responses/Error" }
+  /api/v1/sessions/{sessionId}/qr:
+    post:
+      tags: [Host]
+      summary: Выдать подписанный QR из свежей позиции ведущего
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LocationEvidence" }
+      responses:
+        "200":
+          description: Новый QR и серверные моменты обновления
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, qrSvg, issuedAt, expiresAt, refreshAt, intervalSeconds, serverTime]
+                properties:
+                  token: { type: string }
+                  qrSvg: { type: string, description: SVG только для web demo; Flutter строит QR из token. }
+                  issuedAt: { type: string, format: date-time }
+                  expiresAt: { type: string, format: date-time }
+                  refreshAt: { type: string, format: date-time }
+                  intervalSeconds: { type: integer, minimum: 3, maximum: 60 }
+                  serverTime: { type: string, format: date-time }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /api/v1/integrity/challenge:
+    post:
+      tags: [Attendance]
+      summary: Одноразовый challenge для platform attestation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [sessionId, installationIdHash, platform]
+              properties:
+                sessionId: { type: string }
+                installationIdHash: { type: string, minLength: 32, maxLength: 256 }
+                platform: { enum: [android, ios] }
+      responses:
+        "200":
+          description: Challenge bound to actor/session/device/platform
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [challenge, expiresAt]
+                properties:
+                  challenge: { type: string }
+                  expiresAt: { type: string, format: date-time }
+        "403": { $ref: "#/components/responses/Error" }
+  /api/v1/integrity/apple/register:
+    post:
+      tags: [Attendance]
+      summary: Проверить и зарегистрировать App Attest key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [sessionId, installationIdHash, challenge, keyId, attestation]
+              properties:
+                sessionId: { type: string }
+                installationIdHash: { type: string, minLength: 32 }
+                challenge: { type: string }
+                keyId: { type: string }
+                attestation: { type: string, contentEncoding: base64 }
+      responses:
+        "201":
+          description: Key registered
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [registered, keyId]
+                properties:
+                  registered: { const: true }
+                  keyId: { type: string }
+        "422": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /api/v1/attendance/check-in:
+    post:
+      tags: [Attendance]
+      summary: Серверная проверка QR, времени, геолокации и устройства
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CheckInRequest" }
+      responses:
+        "200":
+          description: Accepted/suspicious attendance or rejected attempt
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [attendance, serverTime]
+                    properties:
+                      attendance: { $ref: "#/components/schemas/Attendance" }
+                      serverTime: { type: string, format: date-time }
+                  - type: object
+                    required: [attendance, result, serverTime]
+                    properties:
+                      attendance: { type: "null" }
+                      result: { $ref: "#/components/schemas/RejectedResult" }
+                      serverTime: { type: string, format: date-time }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /api/v1/review/queue:
+    get:
+      tags: [Review]
+      summary: Suspicious-очередь для ведущего/администратора
+      responses:
+        "200":
+          description: Ведущий видит только свои занятия
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/ReviewItem" }
+        "403": { $ref: "#/components/responses/Error" }
+  /api/v1/review/{attendanceId}:
+    patch:
+      tags: [Review]
+      summary: Подтвердить или отклонить suspicious-отметку
+      parameters:
+        - name: attendanceId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decision, note]
+              properties:
+                decision: { enum: [accept, reject] }
+                note: { type: string, minLength: 5, maxLength: 500 }
+      responses:
+        "200":
+          description: Updated attendance with preserved originalStatus
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Attendance" }
+        "409": { $ref: "#/components/responses/Error" }
+  /api/v1/review/{attendanceId}/history:
+    get:
+      tags: [Review]
+      summary: Append-only review history
+      parameters:
+        - name: attendanceId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Review events ordered by time
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        from_status: { enum: [suspicious] }
+                        to_status: { enum: [accepted, rejected] }
+                        note: { type: string }
+                        reviewer_name: { type: string }
+                        created_at: { type: string, format: date-time }
+  /api/v1/admin/overview:
+    get:
+      tags: [Admin]
+      summary: Счётчики и последние отметки
+      responses:
+        "200": { description: Overview }
+        "403": { $ref: "#/components/responses/Error" }
+  /api/v1/admin/venues:
+    get:
+      tags: [Admin]
+      summary: Места и anti-fraud настройки
+      responses:
+        "200":
+          description: Venue list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Venue" }
+  /api/v1/admin/venues/{venueId}:
+    patch:
+      tags: [Admin]
+      summary: Изменить правила конкретного места
+      parameters:
+        - name: venueId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VenueUpdate" }
+      responses:
+        "200":
+          description: Updated venue
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Venue" }
+        "400": { $ref: "#/components/responses/Error" }
+  /api/v1/admin/audit:
+    get:
+      tags: [Admin]
+      summary: Журнал security/admin событий
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+      responses:
+        "200": { description: Audit rows }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: existing-access-token
+  parameters:
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema: { type: string, maxLength: 100 }
+  responses:
+    Error:
+      description: Stable machine code and safe message
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+  schemas:
+    Actor:
+      type: object
+      required: [id, name, role]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        role: { enum: [participant, host, admin] }
+        groupId: { type: [string, "null"] }
+    Session:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        venue_id: { type: string }
+        host_id: { type: string }
+        group_id: { type: string }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        venue_name: { type: string }
+        address: { type: string }
+    LocationEvidence:
+      type: object
+      additionalProperties: false
+      required: [latitude, longitude, accuracyM, recordedAt, isMocked]
+      properties:
+        latitude: { type: number, minimum: -90, maximum: 90 }
+        longitude: { type: number, minimum: -180, maximum: 180 }
+        accuracyM: { type: number, minimum: 0, maximum: 10000 }
+        recordedAt: { type: string, format: date-time }
+        isMocked: { type: boolean }
+    DeviceEvidence:
+      type: object
+      additionalProperties: false
+      required: [installationIdHash, platform, isEmulator, isRooted, isJailbroken]
+      properties:
+        installationIdHash: { type: string, minLength: 32, maxLength: 256 }
+        platform: { enum: [android, ios] }
+        isEmulator: { type: boolean }
+        isRooted: { type: boolean }
+        isJailbroken: { type: boolean }
+    PlayIntegrityEvidence:
+      type: object
+      additionalProperties: false
+      required: [provider, challenge, token]
+      properties:
+        provider: { const: play_integrity }
+        challenge: { type: string }
+        token: { type: string }
+    AppAttestEvidence:
+      type: object
+      additionalProperties: false
+      required: [provider, challenge, keyId, assertion, clientData]
+      properties:
+        provider: { const: app_attest }
+        challenge: { type: string }
+        keyId: { type: string }
+        assertion: { type: string, contentEncoding: base64 }
+        clientData: { type: string }
+    CheckInRequest:
+      type: object
+      additionalProperties: false
+      required: [qrToken, location, device, integrity]
+      properties:
+        qrToken: { type: string, minLength: 30, maxLength: 10000 }
+        location: { $ref: "#/components/schemas/LocationEvidence" }
+        device: { $ref: "#/components/schemas/DeviceEvidence" }
+        integrity:
+          oneOf:
+            - { $ref: "#/components/schemas/PlayIntegrityEvidence" }
+            - { $ref: "#/components/schemas/AppAttestEvidence" }
+          discriminator:
+            propertyName: provider
+    RiskReason:
+      type: object
+      required: [code, severity, title, detail]
+      properties:
+        code: { type: string, examples: [LOW_GPS_ACCURACY] }
+        severity: { enum: [warning, rejected] }
+        title: { type: string }
+        detail: { type: string }
+        evidence: { type: object, additionalProperties: true }
+    Attendance:
+      type: object
+      required: [id, sessionId, participantId, status, originalStatus, reasons, riskScore, location, markedAt, idempotent]
+      properties:
+        id: { type: string, format: uuid }
+        sessionId: { type: string }
+        participantId: { type: string }
+        status: { enum: [accepted, suspicious, rejected] }
+        originalStatus: { enum: [accepted, suspicious] }
+        reasons:
+          type: array
+          items: { $ref: "#/components/schemas/RiskReason" }
+        riskScore: { type: integer, minimum: 0, maximum: 100 }
+        location:
+          type: object
+          properties:
+            latitude: { type: number }
+            longitude: { type: number }
+            accuracyM: { type: number }
+        markedAt: { type: string, format: date-time }
+        reviewedBy: { type: [string, "null"] }
+        reviewedAt: { type: [string, "null"], format: date-time }
+        reviewNote: { type: [string, "null"] }
+        idempotent: { type: boolean }
+    RejectedResult:
+      type: object
+      required: [status, reasons, riskScore, attemptId]
+      properties:
+        status: { const: rejected }
+        reasons:
+          type: array
+          items: { $ref: "#/components/schemas/RiskReason" }
+        riskScore: { type: integer, minimum: 0, maximum: 100 }
+        attemptId: { type: string, format: uuid }
+    ReviewItem:
+      allOf:
+        - { $ref: "#/components/schemas/Attendance" }
+        - type: object
+          properties:
+            participant_name: { type: string }
+            session_title: { type: string }
+            venue_name: { type: string }
+    Venue:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        address: { type: string }
+        latitude: { type: number }
+        longitude: { type: number }
+        radius_m: { type: integer }
+        host_radius_m: { type: integer }
+        qr_interval_s: { type: integer }
+        qr_ttl_s: { type: integer }
+        checkin_before_min: { type: integer }
+        checkin_after_min: { type: integer }
+        gps_accuracy_warn_m: { type: integer }
+        timezone: { type: string }
+    VenueUpdate:
+      type: object
+      additionalProperties: false
+      required: [name, address, latitude, longitude, radiusM, hostRadiusM, qrIntervalS, qrTtlS, checkinBeforeMin, checkinAfterMin, gpsAccuracyWarnM, timezone]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        address: { type: string, minLength: 2, maxLength: 200 }
+        latitude: { type: number, minimum: -90, maximum: 90 }
+        longitude: { type: number, minimum: -180, maximum: 180 }
+        radiusM: { type: integer, minimum: 20, maximum: 5000 }
+        hostRadiusM: { type: integer, minimum: 20, maximum: 5000 }
+        qrIntervalS: { type: integer, minimum: 3, maximum: 60 }
+        qrTtlS: { type: integer, minimum: 5, maximum: 120 }
+        checkinBeforeMin: { type: integer, minimum: 0, maximum: 180 }
+        checkinAfterMin: { type: integer, minimum: 0, maximum: 180 }
+        gpsAccuracyWarnM: { type: integer, minimum: 10, maximum: 1000 }
+        timezone: { type: string }
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: {}
