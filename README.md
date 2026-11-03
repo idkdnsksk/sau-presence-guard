@@ -19,7 +19,6 @@
 Нужен Node.js 22.13+.
 
 ```powershell
-Copy-Item .env.example .env
 npm ci
 npm run check
 npm run dev
@@ -108,9 +107,10 @@ Plugin сам регистрирует `SauPresenceGuardPlugin` на Android/iOS
 
 ## Отправка
 
-1. Заполнить три поля в [docs/SUBMISSION_RU.md](docs/SUBMISSION_RU.md): автор, контакты, URL репозитория/демо.
+1. Открыть готовый текст заявки в [docs/SUBMISSION_RU.md](docs/SUBMISSION_RU.md).
 2. Выполнить `npm run check`.
 3. Запустить `powershell -ExecutionPolicy Bypass -File scripts/package-submission.ps1`.
 4. Приложить полученный `submission/sau-presence-guard-submission.zip` к решению Astana Hub.
 
 Полное соответствие каждому пункту официального PDF — в [docs/TZ_COMPLIANCE.md](docs/TZ_COMPLIANCE.md).
+
